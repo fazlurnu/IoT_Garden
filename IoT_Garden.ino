@@ -7,7 +7,8 @@ int ledPin = 5; // GPIO5
 int statusPin = 13;
 
 WiFiServer server(80);
- 
+const int analog_ip = A0;
+
 void setup() {
   Serial.begin(115200);
   delay(10);
@@ -31,6 +32,7 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+  
   Serial.println("");
   Serial.println("WiFi connected");
   digitalWrite(statusPin, HIGH);
@@ -71,14 +73,16 @@ void loop() {
   while(!client.available()){
     delay(1);
   }
- 
+
   // Read the first line of the request
   String request = client.readStringUntil('\r');
   Serial.println(request);
   client.flush();
  
+  int inputVal = analogRead (analog_ip); // Analog Values 0 to 1023
+  int humidity = map(inputVal, 800, 350, 0, 100);
+  
   // Match the request
- 
   int value = LOW;
   if (request.indexOf("/LED=ON") != -1)  {
     digitalWrite(ledPin, HIGH);
@@ -118,6 +122,11 @@ void loop() {
       "}"
     "</style>"
   "</head>");
+
+  client.print("Humidity: ");
+  client.print(humidity);
+  client.print("%");
+  client.println("<br>");
 
   client.print("Led pin is now: ");
  
