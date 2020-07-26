@@ -1,13 +1,22 @@
 #include <ESP8266WiFi.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
  
 const char* ssid = "Azhari Home";
 const char* password = "papamama";
- 
+
+const long utcOffsetInSeconds = 3600;
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
 int ledPin = 5; // GPIO5
 int statusPin = 13;
 
 WiFiServer server(80);
 const int analog_ip = A0;
+
+// Define NTP Client to get time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 void setup() {
   Serial.begin(115200);
@@ -54,7 +63,7 @@ void setup() {
   Serial.print(WiFi.localIP());
   Serial.println("/");
 
-  
+  timeClient.begin();  
 }
  
 void loop() {
@@ -78,19 +87,25 @@ void loop() {
   String request = client.readStringUntil('\r');
   Serial.println(request);
   client.flush();
- 
+
+  timeClient.update();
+  String day = daysOfTheWeek[timeClient.getDay()];
+  int hour = timeClient.getHours()+7;
+  int minute = timeClient.getMinutes();
+  int second = timeClient.getSeconds();
+  
   int inputVal = analogRead (analog_ip); // Analog Values 0 to 1023
   int humidity = map(inputVal, 800, 350, 0, 100);
   
   // Match the request
   int value = LOW;
   if (request.indexOf("/LED=ON") != -1)  {
-    digitalWrite(ledPin, HIGH);
     value = HIGH;
+    digitalWrite(ledPin, not(value));
   }
   if (request.indexOf("/LED=OFF") != -1)  {
-    digitalWrite(ledPin, LOW);
     value = LOW;
+    digitalWrite(ledPin, not(value));
   }
  
 // Set ledPin according to the request
@@ -123,12 +138,22 @@ void loop() {
     "</style>"
   "</head>");
 
+  client.print("Updated at: ");
+  client.print(day);
+  client.print(", ");
+  client.print(hour);
+  client.print(":");
+  client.print(minute);
+  client.print(":");
+  client.println(second);
+  client.println("<br>");
+  
   client.print("Humidity: ");
   client.print(humidity);
   client.print("%");
   client.println("<br>");
 
-  client.print("Led pin is now: ");
+  client.print("Water pump is now: ");
  
   if(value == HIGH) {
     client.print("On");
