@@ -19,6 +19,7 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 int minute_prev = -1;
 int pump = 13;
+bool pump_state = LOW;
 
 void setup() {
   Serial.begin(9600);
@@ -52,23 +53,33 @@ void loop() {
   int minute = timeClient.getMinutes();
   int second = timeClient.getSeconds();
 
+  String message = "Time: ";
+  message += day;
+  message += String(", ");
+  message += String(hour);
+  message += String(":");
+  message += String(minute);
+  message += String(":");
+  message += String(second);
+  
+  message += String("\nSoil Humidity: ");
+  message += String(humidity);
+  message += String("%");
+  
+  if (humidity < 40){
+    if (minute - minute_prev > 30 || minute - minute_prev < 0){
+      minute_prev = minute - 1;
+      message += String("\nLow Humidity! Please water your plant! ");
+      myBot.sendMessage(id, message);
+      delay(500);
+    }
+  }
+  
   if (myBot.getNewMessage(msg)) {
-    String message = "Time: ";
-    message += day;
-    message += String(", ");
-    message += String(hour);
-    message += String(":");
-    message += String(minute);
-    message += String(":");
-    message += String(second);
-    
-    message += String("\nSoil Humidity: ");
-    message += String(humidity);
-    message += String("%");
-
     if(msg.sender.id == id){
       if (msg.text.equalsIgnoreCase("on")) {
-        digitalWrite(pump, LOW);
+        pump_state = LOW;
+        digitalWrite(pump, pump_state);
         message += String("\nThe pump is ON");
         Serial.println(message);
         myBot.sendMessage(id, message);
